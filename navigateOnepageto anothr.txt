@@ -443,3 +443,286 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
+
+
+
+
+
+------------------------------------------------get data  start --------------------------------------------------------------------------------
+
+------------
+-------------------------------------------------Fetch Data start--------------------------------------------------------------------
+import "dart:core";
+import "dart:core";
+
+import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+
+List<Student> objectsFromJson(String str)=>List<Student>.from(json.decode(str).map((x)=> Student.fromJson(x)));
+String objectsToJson(List<Student> data)=>json.encode(List<Student>.from(data).map((x)=>x.toJson()));
+
+class Student{
+
+  int? id;
+  String? name;
+  String? email;
+  String? round;
+
+  Student({required this.id, required this.name, required this.email, required this.round});
+  factory Student.fromJson(Map<String,dynamic> json) => Student(id:json['id'], name: json['name'], email: json['email'], round: json['round']);
+  Map<String,dynamic> toJson(){
+
+    return{
+      "id":id,
+      "name":name,
+      "email":email,
+      "round":round
+    };
+
+  }
+
+}
+
+main(){
+  runApp(MaterialApp(
+    home:Showall() ,
+  ),
+  );
+}
+
+class Showall extends StatefulWidget {
+  const Showall({super.key});
+
+  @override
+  State<Showall> createState() => _ShowallState();
+}
+
+class _ShowallState extends State<Showall> {
+
+  late List<Student> _students=[];
+  Future<List<Student>> showall() async {
+    final response=await http.get(
+      Uri.parse('http://192.168.0.116:8080/students'),
+
+    );
+    if(response.statusCode==200){
+      return objectsFromJson(response.body);
+    }else{
+      throw Exception("Failed");
+    }
+  }
+
+  @override
+  void initState() {
+    showall();
+    // TODO: implement initState
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ListView(
+        children: [
+          Container(
+            height: 400,
+            child: FutureBuilder<List<Student>>(
+              future:showall(),
+              builder:(context,snapshot){
+                if(snapshot.hasData){
+                  return ListView.builder(
+                    itemCount:snapshot.data!.length,
+                    itemBuilder: (context,index){
+                      return ListTile(
+                        title: Text(snapshot.data![index].id.toString()),
+                        leading: Text(snapshot.data![index].name.toString()),
+                      );
+                    },
+                  );
+                }else if(snapshot.hasError){
+                  return Text("Error");
+                }else{
+                  return CircularProgressIndicator();
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+
+
+
+
+------------------------------------------------get data.dart end---------------------------------------------------------------------------
+------------------------------------------------get data  end--------------------------------------------------------------------------------
+
+
+
+------------------------------------------------get data spring controller start------------------------------------------------------------
+
+
+package com.example.demo;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@CrossOrigin("*")
+public class Controller {
+
+	public Controller() {
+		// TODO Auto-generated constructor stub
+	}
+	
+	
+//	@PostMapping("/insert")
+//	public void saveStudent(@RequestBody Student s) {
+//		StudentDAO dao=new StudentDAO();
+//		System.out.println(s);
+//		dao.saveStudent(s);
+//	}
+	
+	 @PostMapping(value="/signin")
+	  public Student signinStudent(@RequestBody Student s) {
+		 StudentDAO d = new StudentDAO();
+	    Student st=d.studentSigninById(s.id);
+	    return st;
+	  }
+
+	  @PostMapping(value="/insert")
+	  public Student insertStudent(@RequestBody Student s) {
+		  StudentDAO d = new StudentDAO();
+	    Student st=d.insert(s);
+	    return st;
+	  }
+
+	  @GetMapping(value="/students")
+	  public List<Student> allstudent(){
+		  StudentDAO d = new StudentDAO();
+	    List<Student> stlist=new ArrayList<>();
+	    stlist=d.allstudent();
+	    return stlist;
+	  }
+
+}
+
+------------------------------------------------get data spring controller end---------------------------------------------------------
+
+
+
+
+-------------------------------------------------------------------get data spring dao start ----------------------------------------------------
+
+
+package com.example.demo;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class StudentDAO {
+	  PreparedStatement pstmt;
+	  Connection con;
+	public StudentDAO() {
+		// TODO Auto-generated constructor stub
+	}
+	
+	public void saveStudent(Student s) {
+		
+		try {
+			Connection con=DriverManager.getConnection(  
+					"jdbc:mysql://localhost:3306/flutter","root","root");  
+		
+					PreparedStatement stm=con.prepareStatement("insert into student values (?,?,?,?)"); 
+					stm.setInt(1, s.getId());
+					stm.setString(2, s.getName());
+					stm.setString(3, s.getEmail());
+					stm.setString(4, s.getRound());
+					stm.executeUpdate();
+					con.close();
+		
+		}catch(Exception e) {
+			System.out.println(e);
+		}
+	}
+	
+	
+
+	  public Student insert(Student p) {
+	    try {
+	      Class.forName("com.mysql.cj.jdbc.Driver");
+	      con = DriverManager.getConnection("jdbc:mysql://localhost:3306/flutter", "root", "root");
+	      pstmt = con.prepareStatement("insert into student values(?,?,?,?)");
+	      pstmt.setInt(1, p.id);
+	      pstmt.setString(2, p.name);
+	      pstmt.setString(3, p.email);
+	      pstmt.setString(4, p.round);
+	      int n = pstmt.executeUpdate();
+
+	      con.close();
+	    } catch (SQLException | ClassNotFoundException e) {
+	    e.printStackTrace();
+	    }
+	    return p;
+	  }
+
+
+
+	  public Student studentSigninById(int id) {
+	    Student s = new Student();
+	    try {
+	      Class.forName("com.mysql.cj.jdbc.Driver");
+	      con = DriverManager.getConnection("jdbc:mysql://localhost:3306/flutter", "root", "root");
+	      pstmt = con.prepareStatement("select * from student where id=" + id);
+	      ResultSet rs = pstmt.executeQuery();
+	      while (rs.next()) {
+	        s = new Student(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4));
+	      }
+
+	      con.close();
+	    } catch (SQLException | ClassNotFoundException e) {
+	    e.printStackTrace();
+	    }
+	    return s;
+	  }
+
+	  public List<Student> allstudent() {
+	    List<Student> stlist = new ArrayList<>();
+	    try {
+	      Class.forName("com.mysql.cj.jdbc.Driver");
+	      con = DriverManager.getConnection("jdbc:mysql://localhost:3306/flutter", "root", "root");
+	      pstmt = con.prepareStatement("select * from student");
+	      ResultSet rs = pstmt.executeQuery();
+	      while (rs.next()) {
+	        stlist.add(new Student(rs.getInt(1),rs.getString(2),rs.getString(3),rs.getString(4)));
+	      }
+
+	      con.close();
+	    } catch (SQLException | ClassNotFoundException e) {
+	    e.printStackTrace();
+	    }
+	    return stlist;
+	  }
+
+}
+
+-------------------------------------------------------------------get data spring dao end----------------------------------------------------
